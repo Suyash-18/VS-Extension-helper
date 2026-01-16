@@ -1,65 +1,79 @@
-# trial1 README
+# Git Helper AI 🤖
 
-This is the README for your extension "trial1". After writing up a brief description, we recommend including the following sections.
+**Git Helper AI** is a powerful VS Code extension that supercharges your Git workflow. It combines **Google Gemini AI** to write intelligent commit messages with a visual dashboard for managing repositories, viewing history, and syncing with collaborators.
 
-## Features
+## ✨ Key Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+### 1. 🤖 AI Smart Commits
+Stop struggling with commit messages. The extension analyzes your staged changes using Google Gemini and offers **3 distinct options** to choose from:
+* **Conventional:** Professional and standard (e.g., `feat: add user login`).
+* **Expressive:** Includes emojis for quick visual scanning (e.g., `🐛 Fix login bug`).
+* **Short:** Concise and to the point.
 
-For example if there is an image subfolder under your extension project workspace:
+### 2. 📊 Visual Dashboard
+Access all your Git tools in one place.
+* Run the command **"Git Helper: Open Dashboard"** to open a control panel.
+* Drag the dashboard tab to the side to keep it open as a "floating" tool palette while you code.
 
-\!\[feature X\]\(images/feature-x.png\)
+### 3. 📜 Clean History Logs
+View your project's history in a beautiful, easy-to-read table.
+* See full author names, exact timestamps, and commit hashes.
+* No complex graph lines—just a clean, readable timeline of who did what.
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+### 4. 🔔 Real-Time Collaborator Alerts
+Never fall behind again.
+* The extension works in the background, checking your remote repository every 30 seconds.
+* If a teammate pushes code, you get an **instant notification** telling you *who* pushed and *how many* commits are incoming.
+* Click **"Sync Changes"** directly from the popup to pull updates immediately.
 
-## Requirements
-
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
-
-## Extension Settings
-
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
-
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
+### 5. 🚀 Easy Publish & Clone
+* **Publish:** Initialize a local folder and push it to a new GitHub repo in seconds without touching the terminal.
+* **Clone:** Paste a URL and let the extension handle the rest.
 
 ---
 
-## Working with Markdown
+## ⚙️ Setup (Required)
 
-You can author your README using Visual Studio Code.  Here are some useful editor keyboard shortcuts:
+To use the AI features, you need a free Google Gemini API Key.
 
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux)
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux)
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets
+1. **Get your Key:** Go to [Google AI Studio](https://aistudio.google.com/) and click **"Get API key"**.
+2. **Copy the Key.**
+3. **Open VS Code Settings:**
+    * Press `Ctrl + ,` (Windows/Linux) or `Cmd + ,` (Mac).
+    * Search for **`Gemini`**.
+4. **Paste the Key:** Enter your key into the setting: **`Git Helper: Gemini Api Key`**.
 
-## For more information
+> **Note:** Your API key is stored locally in your VS Code settings and is never shared with anyone else.
 
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
+---
 
-**Enjoy!**
+## 🎮 How to Use
+
+You can use the **Dashboard** or the **Command Palette** (`Ctrl+Shift+P` / `Cmd+Shift+P`).
+
+| Feature | Command Palette Name | Description |
+| :--- | :--- | :--- |
+| **Dashboard** | `Git Helper: Open Dashboard` | Opens the visual UI panel. |
+| **Smart Commit** | `Git: AI Smart Commit` | Stages changes, generates AI messages, and commits/pushes. |
+| **View History** | `Git: Show Network Graph` | Opens the clean commit log viewer. |
+| **Publish** | `Git: Publish/Init Repo` | Turn a local folder into a remote Git repo. |
+| **Clone** | `Git: Clone Repository` | Clone a repo from a URL. |
+
+---
+
+## 🔧 Extension Settings
+
+This extension contributes the following settings:
+
+* `gitHelper.geminiApiKey`: Your Google Gemini API Key. (Required for AI commits).
+
+---
+
+## 📋 Requirements
+
+* **Git** must be installed on your machine and available in your system PATH.
+* An active internet connection is required for AI generation and Remote Sync alerts.
+
+---
+
+**Enjoy a faster, smarter Git workflow!** 🚀

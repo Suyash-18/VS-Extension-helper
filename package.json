@@ -1,7 +1,9 @@
 {
-  "name": "trial1",
-  "displayName": "Trial1",
+  "name": "Helper",
+  "displayName": "Helper",
+  "publisher": "suyash",
   "description": "",
+  "repository": "https://github.com/Suyash-18/VS-Extension-helper.git",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.108.0"
