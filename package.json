@@ -4,7 +4,7 @@
   "publisher": "suyash",
   "description": "",
   "repository": "https://github.com/Suyash-18/VS-Extension-helper.git",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "engines": {
     "vscode": "^1.108.0"
   },
@@ -15,23 +15,38 @@
   "main": "./extension.js",
   "contributes": {
     "commands": [
-        { "command": "git-helper.openDashboard", "title": "Git Helper: Open Dashboard" },
-        { "command": "git-helper.publishRepo", "title": "Git: Publish/Init Repo" },
-        { "command": "git-helper.cloneRepo", "title": "Git: Clone Repository" },
-        { "command": "git-helper.aiCommit", "title": "Git: AI Smart Commit" },
-        { "command": "git-helper.showGraph", "title": "Git: Show Network Graph" }
+      {
+        "command": "git-helper.openDashboard",
+        "title": "Git Helper: Open Dashboard"
+      },
+      {
+        "command": "git-helper.publishRepo",
+        "title": "Git: Publish/Init Repo"
+      },
+      {
+        "command": "git-helper.cloneRepo",
+        "title": "Git: Clone Repository"
+      },
+      {
+        "command": "git-helper.aiCommit",
+        "title": "Git: AI Smart Commit"
+      },
+      {
+        "command": "git-helper.showGraph",
+        "title": "Git: Show Network Graph"
+      }
     ],
     "configuration": {
-        "title": "Git Helper AI",
-        "properties": {
-            "gitHelper.geminiApiKey": {
-                "type": "string",
-                "default": "AIzaSyA_f1o_9Yq9XMfc-0v7DyBckkEBqtxKB7k",
-                "description": "Your Google Gemini API Key for smart commit messages"
-            }
+      "title": "Git Helper AI",
+      "properties": {
+        "gitHelper.geminiApiKey": {
+          "type": "string",
+          "default": "AIzaSyA_f1o_9Yq9XMfc-0v7DyBckkEBqtxKB7k",
+          "description": "Your Google Gemini API Key for smart commit messages"
         }
+      }
     }
-},
+  },
   "scripts": {
     "lint": "eslint .",
     "pretest": "npm run lint",
