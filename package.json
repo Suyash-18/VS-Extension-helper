@@ -15,33 +15,19 @@
   "main": "./extension.js",
   "contributes": {
     "commands": [
-      {
-        "command": "git-helper.openDashboard",
-        "title": "Git Helper: Open Dashboard"
-      },
-      {
-        "command": "git-helper.publishRepo",
-        "title": "Git: Publish/Init Repo"
-      },
-      {
-        "command": "git-helper.cloneRepo",
-        "title": "Git: Clone Repository"
-      },
-      {
-        "command": "git-helper.aiCommit",
-        "title": "Git: AI Smart Commit"
-      },
-      {
-        "command": "git-helper.showGraph",
-        "title": "Git: Show Network Graph"
-      }
+      { "command": "git-helper.openDashboard", "title": "Git Helper: Open Dashboard" },
+        { "command": "git-helper.publishRepo", "title": "Git: Publish/Init Repo" },
+        { "command": "git-helper.cloneRepo", "title": "Git: Clone Repository" },
+        { "command": "git-helper.aiCommit", "title": "Git: AI Smart Commit" },
+        { "command": "git-helper.showGraph", "title": "Git: Show Network Graph" },
+        { "command": "git-helper.ignoreFiles", "title": "Git: Add to .gitignore" } 
     ],
     "configuration": {
       "title": "Git Helper AI",
       "properties": {
         "gitHelper.geminiApiKey": {
           "type": "string",
-          "default": "AIzaSyA_f1o_9Yq9XMfc-0v7DyBckkEBqtxKB7k",
+          "default": "AIzaSyCIYWKbe870aiSNPJcfRhOMtWEDD4QWR70",
           "description": "Your Google Gemini API Key for smart commit messages"
         }
       }
