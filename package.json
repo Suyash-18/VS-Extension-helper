@@ -4,7 +4,7 @@
   "publisher": "suyash",
   "description": "",
   "repository": "https://github.com/Suyash-18/VS-Extension-helper.git",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "engines": {
     "vscode": "^1.108.0"
   },
@@ -15,12 +15,30 @@
   "main": "./extension.js",
   "contributes": {
     "commands": [
-      { "command": "git-helper.openDashboard", "title": "Git Helper: Open Dashboard" },
-        { "command": "git-helper.publishRepo", "title": "Git: Publish/Init Repo" },
-        { "command": "git-helper.cloneRepo", "title": "Git: Clone Repository" },
-        { "command": "git-helper.aiCommit", "title": "Git: AI Smart Commit" },
-        { "command": "git-helper.showGraph", "title": "Git: Show Network Graph" },
-        { "command": "git-helper.ignoreFiles", "title": "Git: Add to .gitignore" } 
+      {
+        "command": "git-helper.openDashboard",
+        "title": "Git Helper: Open Dashboard"
+      },
+      {
+        "command": "git-helper.publishRepo",
+        "title": "Git: Publish/Init Repo"
+      },
+      {
+        "command": "git-helper.cloneRepo",
+        "title": "Git: Clone Repository"
+      },
+      {
+        "command": "git-helper.aiCommit",
+        "title": "Git: AI Smart Commit"
+      },
+      {
+        "command": "git-helper.showGraph",
+        "title": "Git: Show Network Graph"
+      },
+      {
+        "command": "git-helper.ignoreFiles",
+        "title": "Git: Add to .gitignore"
+      }
     ],
     "configuration": {
       "title": "Git Helper AI",
