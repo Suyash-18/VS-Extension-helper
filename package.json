@@ -45,8 +45,9 @@
       "properties": {
         "gitHelper.geminiApiKey": {
           "type": "string",
-          "default": "AIzaSyCIYWKbe870aiSNPJcfRhOMtWEDD4QWR70",
-          "description": "Your Google Gemini API Key for smart commit messages"
+          "default": "AIzaSyAwQvdwfsGH4SauGem_zd9VVorbFgc1R4Q",
+          "description": "Enter your own Gemini API Key to avoid rate limits.",
+          "order": 1
         }
       }
     }

@@ -15,7 +15,125 @@ function activate(context) {
     startBackgroundCheck(); 
 
     // ---------------------------------------------------------
-    // COMMAND 1: Smart Publish (Deep Scan)
+    // COMMAND: Set Custom API Key (Secure Storage)
+    // ---------------------------------------------------------
+    let setKeyCommand = vscode.commands.registerCommand('git-helper.setApiKey', async () => {
+        const newKey = await vscode.window.showInputBox({
+            placeHolder: 'Enter your custom Gemini API Key',
+            prompt: 'Leave empty to reset and use the default built-in key.',
+            password: true,
+            ignoreFocusOut: true
+        });
+
+        // If user pressed Enter (even if empty)
+        if (newKey !== undefined) { 
+            if (newKey.trim() === '') {
+                // If empty, delete the secret so it falls back to package.json
+                await context.secrets.delete('geminiApiKey');
+                vscode.window.showInformationMessage('Custom key removed. Using default extension key.');
+            } else {
+                // Save to secure storage
+                await context.secrets.store('geminiApiKey', newKey);
+                vscode.window.showInformationMessage('Custom API Key saved securely!');
+            }
+        }
+    });
+
+    // ---------------------------------------------------------
+    // COMMAND: AI Smart Commit
+    // ---------------------------------------------------------
+    let aiCommitCommand = vscode.commands.registerCommand('git-helper.aiCommit', async function () {
+        const folder = await getRepoOrPickOne();
+        if (!folder) return; 
+
+        const git = simpleGit(folder);
+
+        // --- 1. KEY RESOLUTION LOGIC ---
+        // Priority A: Check Secure Storage (User Custom Key)
+        let apiKey = await context.secrets.get('geminiApiKey');
+        
+        // Priority B: Check package.json Config (Default Key)
+        if (!apiKey) {
+            const config = vscode.workspace.getConfiguration('gitHelper');
+            apiKey = config.get('defaultApiKey');
+        }
+
+        // Final Check: Is it still missing or a placeholder?
+        if (!apiKey || apiKey.includes('PUT_YOUR_DEFAULT_KEY')) {
+            const action = await vscode.window.showErrorMessage(
+                'Gemini API Key missing. Please set your own key.', 
+                'Set Key'
+            );
+            if (action === 'Set Key') vscode.commands.executeCommand('git-helper.setApiKey');
+            return;
+        }
+
+        try {
+            const status = await git.status();
+            if (status.files.length === 0) return vscode.window.showInformationMessage('No changes in ' + path.basename(folder));
+            
+            await git.add('.'); 
+            const diff = await git.diff(['--staged']);
+            if (!diff) return;
+
+            // --- 2. GENERATE WITH LOADING BAR ---
+            const generatedItems = await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: "AI is writing commit messages...",
+                cancellable: false
+            }, async (progress) => {
+                
+                const genAI = new GoogleGenerativeAI(apiKey);
+                const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+                
+                // Structured JSON Prompt
+                const prompt = `Generate 3 distinct git commit messages for this diff. 
+                Return strictly a JSON array of objects with keys: "subject" (max 50 chars) and "body" (full explanation).
+                Example: [{"subject": "Fix login bug", "body": "Fixed an issue where..."}]
+                \nDiff:\n${diff.substring(0, 3000)}`;
+                
+                try {
+                    const result = await model.generateContent(prompt);
+                    const text = result.response.text();
+                    
+                    // Sanitize JSON
+                    const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
+                    const rawOptions = JSON.parse(jsonStr);
+
+                    // Map to QuickPick Items
+                    return rawOptions.map(opt => ({
+                        label: `$(git-commit) ${opt.subject}`, 
+                        detail: opt.body,                     
+                        value: `${opt.subject}\n\n${opt.body}` 
+                    }));
+                } catch (e) {
+                    // Fallback for non-JSON response
+                    return [{ label: "Error parsing AI response", detail: e.message, value: "Error" }];
+                }
+            });
+
+            if (!generatedItems || generatedItems.length === 0) return;
+
+            // --- 3. SHOW OPTIONS ---
+            const selected = await vscode.window.showQuickPick(generatedItems, { 
+                placeHolder: `Select a commit message for ${path.basename(folder)}`,
+                ignoreFocusOut: true,
+                matchOnDetail: true
+            });
+
+            if (selected && selected.value !== "Error") {
+                await git.commit(selected.value);
+                await git.push();
+                vscode.window.showInformationMessage(`Pushed to ${path.basename(folder)}`);
+            }
+
+        } catch (err) { 
+            vscode.window.showErrorMessage('Error: ' + err.message); 
+        }
+    });
+
+    // ---------------------------------------------------------
+    // COMMAND: Publish Repo
     // ---------------------------------------------------------
     let publishCommand = vscode.commands.registerCommand('git-helper.publishRepo', async function () {
         const targetFolder = await pickFolderToPublish();
@@ -46,7 +164,7 @@ function activate(context) {
     });
 
     // ---------------------------------------------------------
-    // COMMAND 2: Ignore Files (Deep Recursive Scan)
+    // COMMAND: Ignore Files
     // ---------------------------------------------------------
     let ignoreCommand = vscode.commands.registerCommand('git-helper.ignoreFiles', async function () {
         const folder = await getRepoOrPickOne();
@@ -54,7 +172,6 @@ function activate(context) {
 
         vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: "Scanning files..." }, async () => {
             try {
-                // Get ALL files recursively
                 const files = getAllFilesRecursively(folder, folder);
                 
                 if (files.length === 0) {
@@ -69,7 +186,6 @@ function activate(context) {
 
                 if (selected && selected.length > 0) {
                     const gitignorePath = path.join(folder, '.gitignore');
-                    // We map back to the relative path string
                     const linesToAdd = selected.map(item => item.label);
                     const content = '\n' + linesToAdd.join('\n') + '\n';
                     
@@ -83,7 +199,7 @@ function activate(context) {
     });
 
     // ---------------------------------------------------------
-    // COMMAND 3: Clone
+    // COMMAND: Clone
     // ---------------------------------------------------------
     let cloneCommand = vscode.commands.registerCommand('git-helper.cloneRepo', async function () {
         const repoUrl = await vscode.window.showInputBox({ placeHolder: 'Git Repo URL' });
@@ -102,52 +218,7 @@ function activate(context) {
     });
 
     // ---------------------------------------------------------
-    // COMMAND 4: AI Smart Commit
-    // ---------------------------------------------------------
-    let aiCommitCommand = vscode.commands.registerCommand('git-helper.aiCommit', async function () {
-        const folder = await getRepoOrPickOne();
-        if (!folder) return; 
-
-        const git = simpleGit(folder);
-        const config = vscode.workspace.getConfiguration('gitHelper');
-        const apiKey = config.get('geminiApiKey');
-
-        if (!apiKey) return vscode.window.showErrorMessage('Gemini API Key missing in Settings');
-
-        try {
-            const status = await git.status();
-            if (status.files.length === 0) return vscode.window.showInformationMessage('No changes in ' + path.basename(folder));
-            
-            await git.add('.'); 
-            const diff = await git.diff(['--staged']);
-            if (!diff) return;
-
-            vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: "AI generating options..." }, async () => {
-                const genAI = new GoogleGenerativeAI(apiKey);
-                const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-                
-                const prompt = `Generate 3 distinct git commit messages for this diff in JSON format ["style1", "style2", "style3"]: \n${diff.substring(0, 3000)}`;
-                const result = await model.generateContent(prompt);
-                
-                let options = [];
-                try {
-                    const text = result.response.text();
-                    const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
-                    options = JSON.parse(jsonStr);
-                } catch (e) { options = [result.response.text()]; }
-
-                const selected = await vscode.window.showQuickPick(options, { placeHolder: `Commit message for ${path.basename(folder)}` });
-                if (selected) {
-                    await git.commit(selected);
-                    await git.push();
-                    vscode.window.showInformationMessage(`Pushed to ${path.basename(folder)}`);
-                }
-            });
-        } catch (err) { vscode.window.showErrorMessage('Error: ' + err.message); }
-    });
-
-    // ---------------------------------------------------------
-    // COMMAND 5: Show Graph
+    // COMMAND: Show Graph
     // ---------------------------------------------------------
     let graphCommand = vscode.commands.registerCommand('git-helper.showGraph', async function () {
         const folder = await getRepoOrPickOne();
@@ -162,7 +233,7 @@ function activate(context) {
     });
 
     // ---------------------------------------------------------
-    // COMMAND 6: Dashboard
+    // COMMAND: Dashboard
     // ---------------------------------------------------------
     let dashboardCommand = vscode.commands.registerCommand('git-helper.openDashboard', () => {
         const panel = vscode.window.createWebviewPanel('gitDashboard', 'Git AI Dashboard', vscode.ViewColumn.One, { enableScripts: true });
@@ -174,37 +245,30 @@ function activate(context) {
                 case 'commit': vscode.commands.executeCommand('git-helper.aiCommit'); break;
                 case 'ignore': vscode.commands.executeCommand('git-helper.ignoreFiles'); break;
                 case 'graph': vscode.commands.executeCommand('git-helper.showGraph'); break;
+                case 'apikey': vscode.commands.executeCommand('git-helper.setApiKey'); break;
             }
         });
     });
 
-    context.subscriptions.push(dashboardCommand, publishCommand, cloneCommand, aiCommitCommand, graphCommand, ignoreCommand);
+    context.subscriptions.push(dashboardCommand, publishCommand, cloneCommand, aiCommitCommand, graphCommand, ignoreCommand, setKeyCommand);
 }
 
 // ---------------------------------------------------------
-// RECURSIVE FILE SCANNER (The Fix)
+// RECURSIVE FILE SCANNER
 // ---------------------------------------------------------
-
 function getAllFilesRecursively(dir, rootDir) {
     let results = [];
     try {
         const list = fs.readdirSync(dir);
-        
         list.forEach(file => {
             const fullPath = path.join(dir, file);
-            const relativePath = path.relative(rootDir, fullPath).replace(/\\/g, '/'); // Force forward slashes
+            const relativePath = path.relative(rootDir, fullPath).replace(/\\/g, '/');
             const stat = fs.statSync(fullPath);
-
-            // Ignore common junk folders to prevent freezing
             if (file === '.git' || file === 'node_modules' || file === 'dist' || file === 'build' || file === '.vscode') return;
-
             if (stat && stat.isDirectory()) {
-                // Add the folder itself as an ignore option
                 results.push({ label: relativePath + '/', description: 'Folder' });
-                // Recurse into it
                 results = results.concat(getAllFilesRecursively(fullPath, rootDir));
             } else {
-                // It's a file
                 results.push({ label: relativePath, description: 'File' });
             }
         });
@@ -215,44 +279,30 @@ function getAllFilesRecursively(dir, rootDir) {
 // ---------------------------------------------------------
 // HELPERS
 // ---------------------------------------------------------
-
-// Deep scan for Publish Candidates
 async function pickFolderToPublish() {
     if (!vscode.workspace.workspaceFolders) return undefined;
     const rootPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
     let candidates = [];
-
-    // Check root
     if (!fs.existsSync(path.join(rootPath, '.git'))) {
         candidates.push({ label: `$(file-directory) Root`, description: 'Current Workspace', path: rootPath });
     }
-
-    // Helper to scan depth
     function scanDir(dir, depth) {
-        if (depth > 4) return; // Stop if too deep
+        if (depth > 4) return;
         try {
             const files = fs.readdirSync(dir, { withFileTypes: true });
             for (const file of files) {
                 if (file.isDirectory() && !['node_modules', '.git', 'dist', 'build'].includes(file.name)) {
                     const subPath = path.join(dir, file.name);
                     const hasGit = fs.existsSync(path.join(subPath, '.git'));
-                    
-                    if (!hasGit) {
-                        // It's a potential new repo
-                        candidates.push({ label: `$(file-directory) ${file.name}`, description: path.relative(rootPath, subPath), path: subPath });
-                    }
-                    // Keep digging
+                    if (!hasGit) candidates.push({ label: `$(file-directory) ${file.name}`, description: path.relative(rootPath, subPath), path: subPath });
                     scanDir(subPath, depth + 1);
                 }
             }
         } catch(e) {}
     }
-
     scanDir(rootPath, 0);
-
     if (candidates.length === 0) return rootPath;
-
-    const selected = await vscode.window.showQuickPick(candidates, { placeHolder: 'Select folder to Publish (Recursive Scan)' });
+    const selected = await vscode.window.showQuickPick(candidates, { placeHolder: 'Select folder to Publish' });
     return selected ? selected.path : undefined;
 }
 
@@ -262,8 +312,6 @@ async function getRepoOrPickOne() {
         return undefined;
     }
     const rootPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
-    
-    // Use the same recursive logic to FIND existing repos
     let repos = [];
     if (fs.existsSync(path.join(rootPath, '.git'))) repos.push({ label: 'Root', path: rootPath });
 
@@ -277,7 +325,6 @@ async function getRepoOrPickOne() {
                     if (fs.existsSync(path.join(subPath, '.git'))) {
                         repos.push({ label: file.name, path: subPath });
                     } else {
-                        // Only recurse if this folder ISN'T a repo itself (nested repos are rare/complex)
                         findRepos(subPath, depth + 1);
                     }
                 }
@@ -301,12 +348,9 @@ function startBackgroundCheck() {
     checkInterval = setInterval(async () => {
         if (!vscode.workspace.workspaceFolders) return;
         const rootPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
-        
-        // Find all repos (quick scan)
         let repoPaths = [];
         if (fs.existsSync(path.join(rootPath, '.git'))) repoPaths.push(rootPath);
         
-        // Simple 1-level scan for background check to save performance
         try {
             const files = fs.readdirSync(rootPath, { withFileTypes: true });
             for (const file of files) {
@@ -324,18 +368,8 @@ function startBackgroundCheck() {
                 await git.fetch();
                 const status = await git.status();
                 if (status.behind > 0) {
-                    const authorName = await git.raw(['log', 'HEAD..@{u}', '-n', '1', '--pretty=format:%an']);
                     statusBarItem.text = `$(cloud-download) ${repoName}: ${status.behind}↓`;
                     statusBarItem.show();
-                    
-                    vscode.window.showInformationMessage(`Update in [${repoName}]: ${authorName.trim()} pushed ${status.behind} commits.`, 'Sync Now').then(sel => {
-                        if (sel === 'Sync Now') {
-                            vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `Syncing ${repoName}...` }, async () => {
-                                await git.pull();
-                                statusBarItem.hide();
-                            });
-                        }
-                    });
                     break;
                 }
             } catch (e) { }
@@ -343,6 +377,9 @@ function startBackgroundCheck() {
     }, 30000); 
 }
 
+// ---------------------------------------------------------
+// UI: Dashboard
+// ---------------------------------------------------------
 function getDashboardHtml() {
     return `<!DOCTYPE html>
     <html lang="en">
@@ -365,6 +402,7 @@ function getDashboardHtml() {
             .card:hover { transform: translateY(-5px); background: var(--vscode-button-secondaryHoverBackground); }
             .card h3 { margin: 0 0 10px 0; }
             .icon { font-size: 2em; margin-bottom: 10px; display: block; }
+            .card.settings { border: 1px dashed var(--vscode-textLink-foreground); }
         </style>
     </head>
     <body>
@@ -375,6 +413,7 @@ function getDashboardHtml() {
             <div class="card" onclick="trigger('ignore')"><span class="icon">🙈</span><h3>Ignore Files</h3><p>Select ANY file</p></div>
             <div class="card" onclick="trigger('commit')"><span class="icon">🤖</span><h3>AI Smart Commit</h3><p>Auto-Message</p></div>
             <div class="card" onclick="trigger('graph')"><span class="icon">📊</span><h3>Show Graph</h3><p>History Log</p></div>
+            <div class="card settings" onclick="trigger('apikey')"><span class="icon">🔑</span><h3>Configure Key</h3><p>Use your own API Key</p></div>
         </div>
         <script>
             const vscode = acquireVsCodeApi();
